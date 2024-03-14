@@ -11,7 +11,7 @@ Window.browse; // använd browse för att se alla argument osv som något har
 
 // skapa en array av buffrar och använd path för att fylla med låtar
 (
-var folder = PathName.new(thisProcess.nowExecutingPath.dirname ++ "/billboard1990/");
+var folder = PathName.new(thisProcess.nowExecutingPath.dirname ++ "/billboard1936/");
 folder.postln;
 Buffer.freeAll;
 
@@ -102,11 +102,11 @@ win= Window.new("Timetravel_alpha", Rect(500,500,700,100));
 win.alwaysOnTop_(true);
 win.onClose_({ ~synth0.free; ~synth1.free; ~radionoise.free; });
 win.front;
-range = ControlSpec(minval: 0, maxval: 33, warp: \linear, step: 1);
+range = ControlSpec(minval: 0, maxval: 88, warp: \linear, step: 1);
 year = NumberBox(w, Rect(20, 20, 150, 20)).align_(\center).background_(Color.clear);
 sl = Slider(win).orientation_(\horizontal);
 sl.action_({arg v; ~songSelector.(range.map(sl.value))});
-sl.addAction({ |sl| year.value_(range.map(sl.value) + 1990)});
+sl.addAction({ |sl| year.value_(range.map(sl.value) + 1935)});
 win.layout_(VLayout(year, sl));
 )
 

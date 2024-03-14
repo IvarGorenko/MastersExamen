@@ -22,7 +22,7 @@ OSCdef.new(\earth,
 		("Distance:" + distance).postln;
 		distance = distance.asInteger;
 		//("Angle:" + msg[2]).postln;
-		if (distance < 35) {~songSelector.value(distance);};
+		if (distance < 89) {~songSelector.value(distance);};
 
 
 	},'/Earth');
@@ -31,13 +31,13 @@ OSCdef.new(\earth,
 
 // skapa en array av buffrar och använd path för att fylla med låtar
 (
-var folder = PathName.new(thisProcess.nowExecutingPath.dirname ++ "/billboard1990/");
+var folder = PathName.new(thisProcess.nowExecutingPath.dirname ++ "/billboard1936/");
 folder.postln;
 Buffer.freeAll;
 
 // globala variabler
 ~crossfade = 5; // sätt 0 för hårdklipp, 5 för vanligt
-~noiseOn = true; // sätt false för att stänga av radiobrus
+~noiseOn = false; // sätt false för att stänga av radiobrus
 ~toggle = 1; // toggle visar vilken av syntarna som nuvarande vald låt spelas på
 ~currentSong = 0;
 ~synth0; ~synth1;
