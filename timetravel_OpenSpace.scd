@@ -11,21 +11,46 @@ Window.browse; // använd browse för att se alla argument osv som något har
 
 
 (
-
+//var distance0 = 0;
 // Starta OSC och lyssna på meddelanden
 OSCdef.new(\earth,
 	{
 		arg msg;
-		var range;
-		var distance = msg[1]/9.4607e+12;
 
-		("Distance:" + distance).postln;
-		distance = distance.asInteger;
-		//("Angle:" + msg[2]).postln;
-		if (distance < 89) {~songSelector.value(distance);};
+		var distance_light = msg[1]/9.4607e+12;
+		var speed = msg[2]/(1e+11 * distance_light); // konstant * distans för att kompensera för att hastigheten är snabbare med större distans, ger att speed (och crossfade) blir konstant vid samma musposition
+		var direction = msg[3];
+		// speed calc from discrete derivative: speed = (distance - distance0)/time
+		//var distance = msg[1];
+		//var speed = abs(distance - distance0)/time;
+		//distance0 = distance.value;
+		("Distance in lightyears:" + distance_light).postln;
+		("speed:" + speed).postln;
+		("direction:" + direction).postln;
+		//("fn1:" + distance).postln;
+		//("fn:" + distance0).postln;
+		//("speed:" + speed).postln;
+
+		distance_light = distance_light.asInteger;
+		if (distance_light < 89) {~songSelector.value(distance_light);};
+
+		if (speed < 0.2, {~crossfade = 1/0.2}, {~crossfade = 1/speed;}); // hastighet kan bli för låg
+
 
 
 	},'/Earth');
+)
+
+(
+OSCdef.new(\time,
+	{
+		arg msg;
+		var focus = msg[1];
+
+		("Focus:" + focus).postln;
+		//("Angle:" + msg[2]).postln;
+
+	},'/TimeTravel');
 )
 
 
@@ -36,7 +61,7 @@ folder.postln;
 Buffer.freeAll;
 
 // globala variabler
-~crossfade = 5; // sätt 0 för hårdklipp, 5 för vanligt
+~crossfade; // sätt 0 för hårdklipp, 5 för vanligt
 ~noiseOn = false; // sätt false för att stänga av radiobrus
 ~toggle = 1; // toggle visar vilken av syntarna som nuvarande vald låt spelas på
 ~currentSong = 0;
