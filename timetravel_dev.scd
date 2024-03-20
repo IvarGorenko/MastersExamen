@@ -2,6 +2,12 @@ s.boot;
 s.quit;
 Server.killAll; // om udp socket address används
 
+o = Server.default.options;
+o.device = "ASIO : MOTU Gen 5";
+s.options.numOutputBusChannels = 10;
+Server.default.reboot;
+
+
 s.scope;
 s.freqscope;
 Window.browse; // använd browse för att se alla argument osv som något har
@@ -151,7 +157,7 @@ SynthDef(\sine, {
 	Out.ar(out, sig);
 }).add;
 )
-
+{ SinOsc.ar([440, 440, 440, 440, 440, 440, 440, 440, 440, 440], 0, 0.2) }.play;
 // Group of synths playing sine wave in 8 channels
 (
 8.do({ |i|
