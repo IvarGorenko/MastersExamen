@@ -54,34 +54,39 @@ SynthDef(\player, { arg out, bufnum, amp = 0, crossfade, pos = 0;
 // deklaration av 2 syntar, byter aktiv synt när låt byts i changeSong
 ~synth0 = Synth.new(\player, [\bufnum, ~media[0]], s).register;
 ~synth1 = Synth.new(\player, [\bufnum, ~media[1]], s).register;
-~activesynth = 1; // toggle för aktiv syntY
-~synth1.set(\amp, 1); // synth 1 spelar i början
+~activesynth = ~synth1; ~inactivesynth = ~synth0; // toggle för aktiv synt
+~activesynth.set(\amp, 1); // synth 1 spelar i början
 
 // funktion som ändrar låt baserat på sliders värde
 ~changeSong = {
-	arg media_index, crossfade;
+	arg media_index, crossfade, direction;
 	//crossfade.postln;
 	// Om låten har bytts, spela den i synten som inte används, muta den andra.
-	if (~activesynth == 0, {
-		~activesynth = 1; ~synth1.set(\bufnum, ~media[media_index], \crossfade, crossfade, \pos, 0);
-		~synth1.set(\amp, 1);
+	if (~activesynth == ~synth0, {
+		~activesynth = ~synth1; ~inactivesynth = ~synth0;
+		~synth1.set(\bufnum, ~media[media_index], \crossfade, crossfade, \pos, 0); ~synth1.set(\amp, 1);
 		~synth0.set(\amp, 0); "synth1 playing".postln;
-		~surround.value(~crossfade);
+		~surround.value(crossfade, direction);
 	}, {
-		~activesynth = 0; ~synth0.set(\bufnum, ~media[media_index], \crossfade, crossfade);
-		~synth0.set(\amp, 1);
+		~activesynth = ~synth0; ~inactivesynth = ~synth1;
+		~synth0.set(\bufnum, ~media[media_index], \crossfade, crossfade); ~synth0.set(\amp, 1);
 		~synth1.set(\amp, 0); "synth0 playing".postln;
-		~surround.value(~crossfade);
+		~surround.value(crossfade, direction);
 	};)
 
 };
 )
 ~media[8].query;
-
 (
 ~surround = {
-	arg crossfade;
-	{~synth1.set(\pos, 1); 0.12.wait; ~synth1.set(\pos, 1.5)}.forkIfNeeded;
+	arg crossfade, direction; // TODO: fixa så att crossfade variabeln kan användas i wait!!!
+	if( direction == 1,{
+		~inactivesynth.set(\pos, 0);
+		{~activesynth.set(\pos, 1,5); 0.12.wait; ~activesynth.set(\pos, 1); 0.12.wait; ~activesynth.set(\pos, 0);}.forkIfNeeded;
+    },{
+        ~activesynth.set(\pos, 0);
+		{~inactivesynth.set(\pos, 1); 0.12.wait; ~inactivesynth.set(\pos, 1.5);}.forkIfNeeded;
+    });
 	("Hello").postln;
 
 }
@@ -137,7 +142,7 @@ OSCdef.new(\earth,
 
 			if ( (abs(dist_prev - dist_skip) > dist_rest) && ( speed_ly_s >= ~jump) ) {
 				crossfade = crossfade * (speed_ly_s / ~jump); // kompensera så crossfade mitt av låten ca
-				~changeSong.value(dist_skip, crossfade);
+				~changeSong.value(dist_skip, crossfade, direction);
 				dist_prev = dist_skip;
 				("Crossfade time kompenserad(s):" + crossfade).postln;
 				//("Dist_skip (lightyears):" + dist_skip).postln;
