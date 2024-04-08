@@ -25,7 +25,7 @@ Buffer.freeAll;
 
 // globala variabler
 ~changeSong;
-~jump = 0.1; // hur många låtar/s innan man skippar
+~jump = 3; // hur många låtar/s innan man skippar
 ~media = Array.new;
 
 folder.entries.do({
@@ -37,6 +37,7 @@ folder.entries.do({
 (
 SynthDef(\player, { arg out, bufnum, amp = 0, crossfade, pos = 0;
 	// buffratescale för att få samma samplingsfrekvens på alla, skalar om dem
+	// TODO: tar endast v kanal för mono till surround, fuckar med tidigare låtar...
 	var sig = PlayBuf.ar(1, bufnum, BufRateScale.kr(bufnum), loop: 1);
 	sig = sig * amp.lag(crossfade); // fading med lag
 	sig = PanAz.ar(
@@ -47,7 +48,7 @@ SynthDef(\player, { arg out, bufnum, amp = 0, crossfade, pos = 0;
         width: 2,
         orientation: 0.5
     ); // OBS! verkar vara lite sticky, behöver starta om och köra kod 2 ggr så funkar det
-	// out = [0,1,2,3,4,5,6,7];
+	// orientation 0.5 för att få stereo av en mono som får width 2!!!
 	Out.ar(out, sig); // TODO: arg out kan tas bort? byt ut den mot 0 bara
 }).add;
 
@@ -64,7 +65,7 @@ SynthDef(\player, { arg out, bufnum, amp = 0, crossfade, pos = 0;
 	// Om låten har bytts, spela den i synten som inte används, muta den andra.
 	if (~activesynth == ~synth0, {
 		~activesynth = ~synth1; ~inactivesynth = ~synth0;
-		~synth1.set(\bufnum, ~media[media_index], \crossfade, crossfade, \pos, 0); ~synth1.set(\amp, 1);
+		~synth1.set(\bufnum, ~media[media_index], \crossfade, crossfade); ~synth1.set(\amp, 1);
 		~synth0.set(\amp, 0); "synth1 playing".postln;
 		~surround.value(crossfade, direction);
 	}, {
@@ -76,22 +77,22 @@ SynthDef(\player, { arg out, bufnum, amp = 0, crossfade, pos = 0;
 
 };
 )
-~media[8].query;
 (
+// funktion som ändrar vart kanalerna spelar för svepande surround vid låtbyte
 ~surround = {
-	arg crossfade, direction; // TODO: fixa så att crossfade variabeln kan användas i wait!!!
+	arg crossfade, direction;
 	if( direction == 1,{
-		~inactivesynth.set(\pos, 0);
-		{~activesynth.set(\pos, 1,5); 0.12.wait; ~activesynth.set(\pos, 1); 0.12.wait; ~activesynth.set(\pos, 0);}.forkIfNeeded;
+
+		{~inactivesynth.set(\pos, 0); ~activesynth.set(\pos, 1,5); (crossfade/2).wait; ~activesynth.set(\pos, 1); (crossfade/2).wait; ~activesynth.set(\pos, 0);}.forkIfNeeded;
     },{
-        ~activesynth.set(\pos, 0);
-		{~inactivesynth.set(\pos, 1); 0.12.wait; ~inactivesynth.set(\pos, 1.5);}.forkIfNeeded;
+
+		{~activesynth.set(\pos, 0); (crossfade/2).wait; ~inactivesynth.set(\pos, 1); (crossfade/2).wait; ~inactivesynth.set(\pos, 1.5);}.forkIfNeeded;
     });
-	("Hello").postln;
+	("Surround").postln;
 
 }
 )
-
+~media[8].query;
 (
 var dist_prev = 0; // if distance is same after
 var dist_rest = 0;
@@ -106,7 +107,6 @@ OSCdef.new(\earth,
 		var speed_ly_s = msg[2]/(9.4607e+12 / 2); // speed of camera in lightyears per second
 		// med ljusår/2 fås hastighet i ljusår/s (ly/s), vet ej varför...
 		var direction = msg[3];
-
 		// max hastighet runt 30 ly/s, fade lika lång som hälften av låtlängden
 		// detta borde göra att man höra varje låt, även då det går snabbt
 		crossfade = 1/speed_ly_s.linlin(0, 40, 0.2, 80);
@@ -114,7 +114,7 @@ OSCdef.new(\earth,
 		//("Distance (lightyears):" + dist_ly).postln;
 		//("Speed (ly/s):" + speed_ly_s).postln;
 		//("Crossfade time alt1 (s):" + crossfade).postln;
-		//("Direction:" + direction).postln;
+		("Direction:" + direction).postln;
 		// rundar av speed till 3 dec. påverkar speed.postln och crossfade!
 		// speed_ly_s = (speed_ly_s * 1000).round / 1000;
 
@@ -122,12 +122,8 @@ OSCdef.new(\earth,
 		if(dist_ly > 88) {dist_ly = 88;}; // finns bara 89 låtar i spellistan
 
 
-		// TODO: crossfade ändringen vid alt 2 funkar men inte superbra...
 		// TODO: När vi går från gränsen till första låt byts det inte från brus, skippet börjar med brus
-		// 3 alternativ för att skippa vid olika hastigheter
-		// alt 1: skippa inte, gör bara låtbytet när vi får en ny låt
-		// alt 2: vid ~jump hastighet ökar låthopp med 1, vid 2ggr hastighet blir hoppet 2 osv
-		// alt 3: låtbyte har en bestämd minimal tid vid alla hastigheter (alt 2 med jump 1 i princip)
+		// Göra så att crossfade är satt till att ske en viss tid?
 		switch (skip_alt,
 		1, {
 			if ( abs(dist_prev - dist_ly) > 0 ) {
@@ -197,33 +193,6 @@ OSCdef.new(\time,
 		//("Angle:" + msg[2]).postln;
 
 	},'/TimeTravel');
-)
-
-(
-{
-    PanAz.ar(
-        numChans: 8,
-        in: ClipNoise.ar(0.1),
-        pos: LFSaw.kr(MouseX.kr(0.2, 8, 'exponential')),
-        level: 0.5,
-        width: 4,
-        orientation: 0.5
-    );
-}.play
-)
-
-(
-// the arg direct will control the proportion of direct to processed signal
-SynthDef("tutorial-DecayPink", { arg outBus = 0, effectBus, direct = 0.5;
-    var source;
-	outBus = [0,1,2,4,5,6,7];
-    // Decaying pulses of PinkNoise. We'll add reverb later.
-    source = Decay2.ar(Impulse.ar(1, 0.25), 0.01, 0.2, PinkNoise.ar);
-    // this will be our main output
-    Out.ar(outBus, source * direct);
-    // this will be our effects output
-	Out.ar(outBus, source * (1 - direct));
-}).play;
 )
 
 (
