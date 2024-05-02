@@ -26,7 +26,7 @@ Buffer.freeAll;
 
 // globala variabler
 ~changeSong; // global funktion
-~jump = 5; // hur många låtar/s innan man skippar
+~jump = 1; // hur många låtar/s innan man skippar
 ~media = Array.new;
 
 
@@ -56,7 +56,7 @@ SynthDef(\player, { arg bufnum, amp = 0, crossfade, pos = 0;
 		in: sig[1],
 		pos: (2/7 + pos).lag(crossfade),
         level: 1,
-        width: 1,
+        width: 2,
         orientation: 0
     );
 
@@ -66,7 +66,7 @@ SynthDef(\player, { arg bufnum, amp = 0, crossfade, pos = 0;
 		in: sig[0],
 		pos: (12/7 - pos).lag(crossfade),
         level: 1,
-        width: 1,
+        width: 2,
         orientation: 0
     );
 	// OBS! verkar vara lite sticky, behöver starta om och köra kod 2 ggr så funkar det
@@ -134,11 +134,11 @@ SynthDef.new(\reroute, {
     },{
 
 
-		{
+		{   // TODO: kanalerna farar när vi kör fram... borde va lika som bak
 			~activesynth.set(\pos, 0, \crossfade, 0, \amp, 1);
 			~inactivesynth.set(\pos, 0, \crossfade, 0, \amp, 1);
 			~inactivesynth.set(\pos, (8/7), \crossfade, crossfade, \amp, 0);
-			//(crossfade).wait; ~inactivesynth.set(\amp, 0, \crossfade, crossfade);
+			(crossfade).wait; ~inactivesynth.set(\pos, 0, \amp, 0, \crossfade, 0);
 		}.forkIfNeeded;
 		("Front").postln;
 		direction.postln;
@@ -165,6 +165,7 @@ OSCdef.new(\earth,
 		// max hastighet runt 30 ly/s, fade lika lång som hälften av låtlängden
 		// detta borde göra att man höra varje låt, även då det går snabbt
 		crossfade = 1/speed_ly_s.linlin(0, 40, 0.2, 80);
+		//crossfade = ~jump; // alltid samma crossfade tid, 5 sekunder
 
 		("Distance (lightyears):" + dist_ly).postln;
 		//("Speed (ly/s):" + speed_ly_s).postln;
@@ -177,12 +178,13 @@ OSCdef.new(\earth,
 		if(dist_ly > 88) {dist_ly = 88;}; // finns bara 89 låtar i spellistan
 
 		// algoritmen för att hoppa över låtar vid vissa hastigheter.
-		dist_rest = (floor(speed_ly_s/~jump));
+		dist_rest = (floor(speed_ly_s * ~jump)); // funkar med 1, annars ska det vara / istället för *
 		dist_skip = dist_ly;
 			if (direction == 1) {dist_skip = dist_ly + dist_rest;}; // från jorden -> lägg till rest
 
 		if ( (abs(dist_prev - dist_skip) > dist_rest) && ( speed_ly_s >= ~jump) ) {
-			crossfade = crossfade * (speed_ly_s / ~jump); // kompensera så crossfade mitt av låten ca
+			//crossfade = ~jump/2; // kompensera så crossfade mitt av låten ca
+			crossfade = ~jump;
 			~changeSong.value(dist_skip, crossfade, direction);
 			dist_prev = dist_skip;
 			("Crossfade time kompenserad(s):" + crossfade).postln;
@@ -191,11 +193,11 @@ OSCdef.new(\earth,
 			//("speed (ly/s):" + speed_ly_s).postln;
 		};
 
-		// om hastighet < jump, byt för varje år
-		// TODO: känns att den inte funkar ibland när man gör snabba byten bak->fram
+		// om hastighet < jump, byt för varje år, crossfade är 5 då
+		// TODO?: känns att den inte funkar ibland när man gör snabba byten bak->fram
 		// kanske beror på instabilitet i hastigheten...
 		if ( (abs(dist_prev - dist_ly) > 0) && (speed_ly_s < ~jump) ){
-			~changeSong.value(dist_ly, crossfade, direction);
+			~changeSong.value(dist_ly, 5, direction);
 			dist_prev = dist_ly;
 		};
 
